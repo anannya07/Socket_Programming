@@ -19,58 +19,52 @@ unsigned char calculate_checksum(char *dataword, int length,int SEGMENT_LENGTH )
     }
 
     // One's complement of the sum
-    return ~sum;
+    return sum;
 }
 
 int main(){
 int sd,cd,cadl;
 struct sockaddr_in sad,cad;
-char dataword[33]; // 32-bit dataword
-char udataword[33] = {0}; // Ensures all elements are initialized to '\0'
-char codeword[41]; // 32-bit dataword + 8-bit checksum + null terminator
+char ucodeword[33]; // 32-bit dataword
+char codeword[40];// Ensures all elements are initialized to '\0'
+char codeword1[41]; // 32-bit dataword + 8-bit checksum + null terminator
+char dataword[40];
 sd=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 sad.sin_family=AF_INET;
-sad.sin_port=htons(9997);
+sad.sin_port=htons(9999);
 sad.sin_addr.s_addr=inet_addr("127.0.0.1");
 bind(sd, (struct sockaddr *)&sad, sizeof(sad));
 listen(sd,10);
 cadl=sizeof(cad);
 cd=accept(sd, (struct sockaddr *)&cad, &cadl);
-    printf("Enter the dataword:");
-    scanf("%s",dataword);
+recv(cd,codeword,sizeof(codeword),0);
+printf("The received codeword is %s\n",codeword);
+printf("Enter the codeword:");
+scanf("%s",codeword1);
     int SEGMENT_LENGTH;
     int i;
-    strcpy(codeword, dataword);
     printf("Enter the segment length:");
     scanf("%d",&SEGMENT_LENGTH);
-     if(strlen(dataword) % SEGMENT_LENGTH!=0){
-     	int padding=SEGMENT_LENGTH-(strlen(dataword)%SEGMENT_LENGTH);
+     if(strlen(codeword1) % SEGMENT_LENGTH!=0){
+     	int padding=SEGMENT_LENGTH-(strlen(codeword1)%SEGMENT_LENGTH);
 	 	for(i=0;i<padding;++i){
-	 		udataword[i]='0';
+	 		ucodeword[i]='0';
 		 }
 	 }
-	 strcat(udataword,dataword);
-	 strcpy(dataword,udataword);
-    unsigned char checksum = calculate_checksum(dataword, strlen(dataword),SEGMENT_LENGTH);
+	 strcat(ucodeword,codeword1);
+    // printf("%s\n",ucodeword);
+    unsigned char checksum = calculate_checksum(ucodeword, strlen(ucodeword),SEGMENT_LENGTH);
 	
-    printf("Checksum: ");
-    for (int i = SEGMENT_LENGTH-1; i >= 0; i--) {
-        printf("%d", (checksum >> i) & 1);
-    }
-    printf("\n");
-	
-    
-    char checksum_binary[9] = {0};
-    for (int i = SEGMENT_LENGTH-1; i >= 0; i--) {
-        checksum_binary[(SEGMENT_LENGTH-1) - i] = ((checksum >> i) & 1) + '0';
-    }
-    strcat(codeword, checksum_binary);
-    printf("Codeword: %s\n", codeword);
+    unsigned int mask=pow(2,SEGMENT_LENGTH)-1;
+if (checksum ==(unsigned char)mask) {
+    printf("Data received OK\n");
+} else {
+    printf("Data received with errors\n");
+}
 
-
-send(cd, codeword, sizeof(codeword), 0);
-/*recv(cd, str, sizeof(str), 0);
-printf("\nRecieved data is : %s\n", str);*/
+printf("Actual Data is: ");
+strncpy(dataword,codeword1,strlen(codeword1)-SEGMENT_LENGTH);
+printf("%s\n",dataword);
 
 close(cd);
 close(sd);
@@ -78,5 +72,4 @@ close(sd);
 /* gcc checksumserver.c -o checksumserver -lm
 rver -lm
 
-./checksumserver
-*/
+./checksumserver*/

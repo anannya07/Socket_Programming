@@ -2,65 +2,74 @@
 #include<string.h>
 #include<arpa/inet.h>
 #include<unistd.h>
+#include<math.h>
+
 int main(){
 int sd,cd,cadl;
 struct sockaddr_in sad,cad;
-char dataword[50],generator[50],crc[50];
-int i,k,len;
+char ocodeword[40];// Ensures all elements are initialized to '\0'
+char codeword[41]; // 32-bit dataword + 8-bit checksum + null terminator
+char generator[12];
 sd=socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 sad.sin_family=AF_INET;
-sad.sin_port=htons(5779);
+sad.sin_port=htons(9998);
 sad.sin_addr.s_addr=inet_addr("127.0.0.1");
 bind(sd, (struct sockaddr *)&sad, sizeof(sad));
-listen(sd,1);
+listen(sd,10);
 cadl=sizeof(cad);
 cd=accept(sd, (struct sockaddr *)&cad, &cadl);
-printf("Enter the dataword:");
-scanf("%s",dataword);
-send(cd, dataword, sizeof(dataword), 0);
-strcpy(crc,dataword);
-printf("Enter the generator or in polynomial form:");
+recv(cd,ocodeword,sizeof(ocodeword),0);
+printf("The received codeword is %s\n",ocodeword);
+printf("Enter the codeword:");
+scanf("%s",codeword);
+printf("Enter the generator :\n");
 scanf("%s",generator);
-send(cd, generator, sizeof(generator), 0);
-int dsize=strlen(dataword);
-int gsize=strlen(generator);
-// first add 0's for generator-1
-    for( i=0;i<gsize-1;++i){
-        dataword[dsize+i]='0';
-    }
-    dataword[dsize+gsize-1]='\0';
-    printf("%s\n",dataword);
-    // now perfprm the modulo 2 division
-    do{
-        for(i=0;i<gsize;++i){
-            dataword[i]=(dataword[i]==generator[i])?'0':'1';
-            }
-        k=0;
-        for(i=0;i<dsize+gsize-1;++i){
-            if(dataword[i]=='0'){
+int i, k, len;
+    int csize = strlen(codeword);
+    int gsize = strlen(generator);
+    
+    do {
+        for (i = 0; i < gsize; ++i) {
+            codeword[i] = (codeword[i] == generator[i]) ? '0' : '1';
+        }
+        
+        k = 0;
+        for (i = 0; i < csize; ++i) {
+            if (codeword[i] == '0') {
                 k++;
             }
         }
-        if(k==dsize+gsize-1)
+        
+        if (k == csize) {
             break;
-        while(strlen(dataword)>(gsize-1)  && dataword[0]!='1' ){
-            for(i=0;i<dsize+gsize-1;++i){
-                dataword[i]=dataword[i+1];
-            }
-            dsize--;
         }
-        len=dsize+gsize-1;
-    }while(len>gsize-1);
-    dataword[len]='\0';
-
-    fflush(stdin);
-
-printf("The dataword with crc is %s\n",dataword);
-send(cd, dataword, sizeof(dataword), 0);
-strcat(crc,dataword);
-
-printf("The dataword transmitted is: %s\n",crc);
-send(cd,crc,sizeof(crc),0);
+        
+        while (strlen(codeword) > (gsize - 1) && codeword[0] != '1') {
+            for (i = 0; i < csize; ++i) {
+                codeword[i] = codeword[i + 1];
+            }
+            csize--;
+        }
+        
+        len = csize;
+    } while (len > gsize - 1);
+    
+    codeword[len] = '\0';
+    
+    int error_detected = 0;
+    for (i = 0; i < strlen(codeword); ++i) {
+        if (codeword[i] != '0') {
+            error_detected = 1;
+            break;
+        }
+    }
+    
+    if (error_detected) {
+        printf("Error detected in entered codeword!\n");
+    } else {
+        printf("No errors detected. Codeword is valid.\n");
+    }
 close(cd);
 close(sd);
 }
+

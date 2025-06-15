@@ -1,105 +1,53 @@
 #include<stdio.h>
-#include<string.h>
-#include<arpa/inet.h>
 #include<unistd.h>
+#include<string.h>
 #include<math.h>
+#include<arpa/inet.h>
 int main(){
-int sd,cadl;
-struct sockaddr_in sad,cad;
-
-    char data[100];
-	int data1[100],data2[100];
-	int dl,r,i=0,j=0,k=0,z,c;
-
-
-sd=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
-sad.sin_family=AF_INET;
-sad.sin_port=htons(9997);
-sad.sin_addr.s_addr=inet_addr("127.0.0.1");
-connect(sd, (struct sockaddr *)&sad, sizeof(sad));
-
-
-
-
-printf("\n Enter the dataword: "); //taking input in string	
-scanf("%s",data);
-dl=strlen(data);	//length of the input string
-
-while(1)	//finding number of parity bits
-{
-    if(pow(2,i)>=dl+i+1)
-        break;
-    i++;	
-}
-r=i;	//storing number of parity bits into r variable
-printf("\n No of redundant bits: %d \n",r);
-
-for(i=0;i<dl;i++)	//conversion of string data into integer
-{
-    data1[i]=data[i]-48;    //data1 array is used to store only integer data
-}
-
-for(i=0;i<r;i++)	//initialising parity bits' positions with some value (say 999) in data2 array
-    {
-        z=pow(2,i);
-        data2[z]=999;	//data2 array is used to store data+parity bits
+    int sd,cad1;
+    struct sockaddr_in sad,cad;
+    sd=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    sad.sin_family=AF_INET;
+    sad.sin_port=htons(10000);
+    sad.sin_addr.s_addr=inet_addr("127.0.0.1");
+    connect(sd,(struct sockaddr *)&sad,sizeof(sad));
+    char data[50],data1[50],codeword[50];
+    int code[50];
+    printf("Enter the dataword:");
+    scanf("%s",data);
+    int r=0;
+    int i,j,k;
+    int m=strlen(data);
+    while(pow(2,r)<(m+r+1)) r++;
+    printf("The no of parity bits is %d\n",r);
+    int totalbits=m+r;
+    for( i=0;i<m;++i){
+        data1[i]=data[i]-'0';
     }
-    
-for(i=dl+r;i>=1;i--)	//this loop is used to place the data bits and parity bits at fixed positions 
-{
-    if(data2[i]!=999)	
-        {
-        data2[i]=data1[j];	//if it's not a parity bit, store the data bit in reverse order
-        j++;
-        }    
-}
-
-for(i=0;i<r;i++)	//outer loop is used to find the values for each parity bit
-{
-    z=pow(2,i);		//finding position of each parity bit
-    c=0;			//initializing counter c
-    //printf("for %d iteration :",i+1);
-    for(j=z;j<=dl+r;j=z+k)	//inner loop is used to add data bits related to each parity bit
-    {	
-        //printf("j=%d\n",j);
-        for(k=j;k<z+j;k++)	//this loop is for part by part parity calculation
-        {
-            //printf("k=%d\n",k);
-            if(k<=dl+r)
-            {
-                if(data2[k]!=999)	//if k is not a parity bit
-                {
-                    c=c+data2[k];	//add the value of that position with counter c
-                }	
-            }		
+    for(i=1,j=0,k=0;i<=totalbits;++i){
+        if(i==pow(2,j)){
+            code[i]=-1;
+            j++;
+        }
+        else{
+            code[i]=data1[k++];
         }
     }
-    data2[z]=c%2;	//parity bit value
-}
-
-printf("\n The codeword is: ");
-j=0;
-
-for(i=dl+r;i>=1;i--)
-    {
-    printf("%d",data2[i]);
+    int pos;
+    for(i=0;i<r;++i){
+        pos=pow(2,i);
+        int parity=0;
+        for(j=pos;j<=totalbits;++j){
+            if(j & pos && code[j]!=-1)
+                parity^=code[j];
+        }
+        code[pos]=parity;
     }
-    char codeword[20];
-    
-    // Assuming `dl + r` is within array bounds
-    for (i = dl + r; i >= 1; i--) {
-        codeword[dl+r-i] = data2[i] + '0'; // Fix indexing
+    for(i=1;i<=totalbits;++i){
+        codeword[i-1]=code[i]+'0';
     }
-    
-    codeword[dl + r] = '\0';  // Null-terminate the string
-    
-   // printf("\n%s\n", codeword);
-    send(sd, codeword, sizeof(codeword), 0); // Send only the meaningful part
-/*recv(cd, str, sizeof(str), 0);
-printf("\nRecieved data is : %s\n", str);*/
-close(sd);
+    codeword[totalbits]='\0';
+    printf("The codeword is %s\n",codeword);
+    send(sd,codeword,sizeof(codeword),0);
+    close(sd);
 }
-/*gcc checksumclient.c -o cclient -lm
-
-./cclient
-*/
